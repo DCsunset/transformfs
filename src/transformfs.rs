@@ -197,7 +197,7 @@ impl Filesystem for TransformFs {
   fn statfs(&mut self, _req: &Request<'_>, _ino: u64, reply: fuser::ReplyStatfs) {
     match statfs(&self.dir) {
       Ok(stat) => {
-				reply.statfs(
+        reply.statfs(
           stat.blocks(),
           stat.blocks_free(),
           stat.blocks_available(),
@@ -205,7 +205,8 @@ impl Filesystem for TransformFs {
           stat.files_free(),
           stat.block_size() as u32,
           stat.maximum_name_length() as u32,
-          stat.block_size() as u32)
+          stat.block_size() as u32
+        )
       },
       Err(err) => {
         reply.error(err as i32);

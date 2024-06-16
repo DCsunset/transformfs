@@ -72,12 +72,12 @@ pub fn read_attr(path: impl AsRef<Path>) -> io::Result<fuser::FileAttr> {
 }
 
 pub fn read_dir(dir: impl AsRef<Path>) -> io::Result<impl Iterator<Item = (u64, fuser::FileType, OsString)>> {
-	// Ignore files that can't be read
+  // Ignore files that can't be read
   Ok(
     fs::read_dir(dir)?
     .filter_map(|res| {
-			match res {
-				Ok(e) => {
+      match res {
+        Ok(e) => {
           match e.file_type().and_then(convert_file_type) {
             Ok(file_type) => Some((e.ino(), file_type, e.file_name())),
             Err(err) => {
@@ -86,13 +86,12 @@ pub fn read_dir(dir: impl AsRef<Path>) -> io::Result<impl Iterator<Item = (u64, 
             }
           }
         }
-				Err(err) => {
-					warn!("error reading entry: {}", err);
-					None
-				}
-			}
+        Err(err) => {
+          warn!("error reading entry: {}", err);
+          None
+        }
+      }
     })
   )
 }
-
 

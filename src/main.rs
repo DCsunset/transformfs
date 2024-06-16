@@ -25,31 +25,31 @@ use fuser::{self, MountOption};
 #[derive(Parser)]
 #[command(version)]
 struct Args {
-	/// The source directory to read from
-	source_dir: PathBuf,
-	/// Mount point of the target transformfs
-	mount_point: PathBuf,
+  /// The source directory to read from
+  source_dir: PathBuf,
+  /// Mount point of the target transformfs
+  mount_point: PathBuf,
 
-	/// script
+  /// script
   #[arg(short, long)]
-	script: PathBuf,
+  script: PathBuf,
 
-	/// Allow other users to access the mounted fs
-	#[arg(long)]
-	allow_other: bool,
+  /// Allow other users to access the mounted fs
+  #[arg(long)]
+  allow_other: bool,
 
-	/// Allow root user to access the mounted fs
-	#[arg(long)]
-	allow_root: bool,
+  /// Allow root user to access the mounted fs
+  #[arg(long)]
+  allow_root: bool,
 
-	/// Time to live for metadata and cache in seconds
-	#[arg(short, long, default_value_t = 1)]
-	ttl: u64,
+  /// Time to live for metadata and cache in seconds
+  #[arg(short, long, default_value_t = 1)]
+  ttl: u64,
 
-	/// Unmount automatically when program exists.
-	/// (need --allow-root or --allow-other; auto set one if not specified)
-	#[arg(short, long)]
-	auto_unmount: bool,
+  /// Unmount automatically when program exists.
+  /// (need --allow-root or --allow-other; auto set one if not specified)
+  #[arg(short, long)]
+  auto_unmount: bool,
 
   /// Run in foreground
   #[arg(long)]
@@ -66,24 +66,24 @@ struct Args {
 
 
 fn main() -> anyhow::Result<()> {
-	env_logger::init();
-	let args = Args::parse();
-	// Convert to absolute path
-	let source_dir = fs::canonicalize(&args.source_dir)?;
-	let mut options = vec![
-		MountOption::RO,
-		MountOption::FSName(source_dir.to_string_lossy().to_string()),
-		MountOption::Subtype("transformfs".to_string()),
-	];
-	if args.allow_other {
-		options.push(MountOption::AllowOther);
-	}
-	if args.allow_root {
-		options.push(MountOption::AllowRoot);
-	}
-	if args.auto_unmount {
-		options.push(MountOption::AutoUnmount);
-	}
+  env_logger::init();
+  let args = Args::parse();
+  // Convert to absolute path
+  let source_dir = fs::canonicalize(&args.source_dir)?;
+  let mut options = vec![
+    MountOption::RO,
+    MountOption::FSName(source_dir.to_string_lossy().to_string()),
+    MountOption::Subtype("transformfs".to_string()),
+  ];
+  if args.allow_other {
+    options.push(MountOption::AllowOther);
+  }
+  if args.allow_root {
+    options.push(MountOption::AllowRoot);
+  }
+  if args.auto_unmount {
+    options.push(MountOption::AutoUnmount);
+  }
 
   if !args.foreground {
     let mut daemon = Daemonize::new().working_directory(".");
