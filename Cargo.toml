@@ -13,7 +13,7 @@ categories = ["filesystem", "command-line-utilities"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-mlua = { version = "0.9.8", features = ["luajit", "vendored"] }
+mlua = { version = "0.9.8", features = ["luajit", "unstable", "vendored"] }
 fuser = { version = "0.14", default-features = false }
 log = "0.4"
 env_logger = "0.11"

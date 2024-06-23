@@ -19,7 +19,7 @@ use fuser::{
   ReplyDirectory,
   FUSE_ROOT_ID
 };
-use mlua::{Function, Lua, String, Table};
+use mlua::{Function, Lua, String as LuaString, Table, OwnedTable};
 use std::{
   collections::HashMap, ffi::{OsStr, OsString}, fs, os::unix::ffi::OsStrExt, path::{Path, PathBuf}, time::Duration
 };
@@ -34,6 +34,8 @@ pub struct TransformFs {
   ttl: Duration,
   /// Lua state with loaded script
   lua: Lua,
+  /// Loaded user-defined table
+  table: OwnedTable,
 
   /// Map inode to file name
   inode_map: HashMap<u64, OsString>
@@ -42,27 +44,32 @@ pub struct TransformFs {
 impl TransformFs {
   pub fn init(dir: PathBuf, script: PathBuf, ttl: Duration) -> anyhow::Result<Self> {
     let lua = Lua::new();
-    lua.load(fs::read_to_string(script)?).exec()?;
+    let table: OwnedTable = lua.load(fs::read_to_string(script)?).eval()?;
     let mut inode_map = HashMap::new();
     inode_map.insert(FUSE_ROOT_ID, dir.clone().into());
     Ok(Self {
       dir,
       ttl,
       lua,
+      table,
       inode_map
     })
   }
 
-  pub fn read_data(&self, name: &OsStr, offset: i64, size: u32) -> mlua::Result<String> {
-    let read_data: Function = self.lua.globals().get("read_data")?;
-    let data = read_data.call::<_, String>((name.as_bytes(), offset, size))?;
+  pub fn read_data(&self, name: &OsStr, offset: i64, size: u32) -> mlua::Result<LuaString> {
+    let read_data: Function = self.table.to_ref().get("read_data")?;
+    let data = read_data.call::<_, LuaString>(
+      ( self.table.to_ref(), self.lua.create_string(name.as_bytes())?, offset, size)
+    )?;
     Ok(data)
   }
   pub fn read_metadata(&self, name: impl AsRef<Path>) -> anyhow::Result<fuser::FileAttr> {
     let mut attr = utils::read_attr(name.as_ref())?;
     if attr.kind == fuser::FileType::RegularFile {
-      let read_metadata: Function = self.lua.globals().get("read_metadata")?;
-      let data = read_metadata.call::<_, Table>(name.as_ref().as_os_str().as_bytes())?;
+      let read_metadata: Function = self.table.to_ref().get("read_metadata")?;
+      let data = read_metadata.call::<_, Table>(
+        (self.table.to_ref(), self.lua.create_string(name.as_ref().as_os_str().as_bytes())?)
+      )?;
       let size: Option<u64> = data.get("size")?;
       if let Some(size) = size {
         attr.size = size;
