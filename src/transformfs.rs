@@ -19,23 +19,41 @@ use fuser::{
   ReplyDirectory,
   FUSE_ROOT_ID
 };
-use mlua::{Function, Lua, String as LuaString, Table, OwnedTable};
+use mlua::{Function, Lua, OwnedFunction, OwnedTable, String as LuaString, Table};
 use std::{
   collections::HashMap, ffi::{OsStr, OsString}, fs, os::unix::ffi::OsStrExt, path::{Path, PathBuf}, time::Duration
 };
 use log::{error, warn};
 use nix::{
-  errno::Errno::{EIO, ENOENT}, fcntl::{self, OFlag}, sys::{self, statfs::statfs}
+  errno::Errno::{EIO, ENOENT}, sys::statfs::statfs
 };
+use anyhow::anyhow;
 use crate::utils;
+
+pub struct UserFn {
+  open: Option<OwnedFunction>,
+  close: Option<OwnedFunction>,
+  read_data: OwnedFunction,
+  read_metadata: OwnedFunction
+}
+
+fn load_user_fn(table: &Table, name: &str) -> mlua::Result<Option<OwnedFunction>> {
+  Ok(
+    if table.contains_key(name)? {
+      Some(table.get::<_, Function>(name)?.bind(table)?.into_owned())
+    } else {
+      None
+    }
+  )
+}
 
 pub struct TransformFs {
   dir: PathBuf,
   ttl: Duration,
   /// Lua state with loaded script
   lua: Lua,
-  /// Loaded user-defined table
-  table: OwnedTable,
+  /// Loaded user-defined function
+  user_fn: UserFn,
 
   /// Map inode to file name
   inode_map: HashMap<u64, OsString>
@@ -45,30 +63,39 @@ impl TransformFs {
   pub fn init(dir: PathBuf, script: PathBuf, ttl: Duration) -> anyhow::Result<Self> {
     let lua = Lua::new();
     let table: OwnedTable = lua.load(fs::read_to_string(script)?).eval()?;
+    let table_ref = table.to_ref();
+    let user_fn = UserFn {
+      open: load_user_fn(&table_ref, "open")?,
+      close: load_user_fn(&table_ref, "close")?,
+      read_data: load_user_fn(&table_ref, "read_data")?.ok_or(
+        anyhow!("read_data not defined in user script")
+      )?,
+      read_metadata: load_user_fn(&table_ref, "read_metadata")?.ok_or(
+        anyhow!("read_metadata not defined in user script")
+      )?
+    };
     let mut inode_map = HashMap::new();
     inode_map.insert(FUSE_ROOT_ID, dir.clone().into());
     Ok(Self {
       dir,
       ttl,
       lua,
-      table,
+      user_fn,
       inode_map
     })
   }
 
   pub fn read_data(&self, name: &OsStr, offset: i64, size: u32) -> mlua::Result<LuaString> {
-    let read_data: Function = self.table.to_ref().get("read_data")?;
-    let data = read_data.call::<_, LuaString>(
-      ( self.table.to_ref(), self.lua.create_string(name.as_bytes())?, offset, size)
+    let data = self.user_fn.read_data.call::<_, LuaString>(
+      (self.lua.create_string(name.as_bytes())?, offset, size)
     )?;
     Ok(data)
   }
-  pub fn read_metadata(&self, name: impl AsRef<Path>) -> anyhow::Result<fuser::FileAttr> {
-    let mut attr = utils::read_attr(name.as_ref())?;
+  pub fn read_metadata(&self, name: &OsStr) -> anyhow::Result<fuser::FileAttr> {
+    let mut attr = utils::read_attr(name)?;
     if attr.kind == fuser::FileType::RegularFile {
-      let read_metadata: Function = self.table.to_ref().get("read_metadata")?;
-      let data = read_metadata.call::<_, Table>(
-        (self.table.to_ref(), self.lua.create_string(name.as_ref().as_os_str().as_bytes())?)
+      let data = self.user_fn.read_metadata.call::<_, Table>(
+        self.lua.create_string(name.as_bytes())?
       )?;
       let size: Option<u64> = data.get("size")?;
       if let Some(size) = size {
@@ -77,6 +104,22 @@ impl TransformFs {
       }
     }
     Ok(attr)
+  }
+  pub fn open_file(&self, name: &OsStr) -> mlua::Result<()> {
+    if let Some(f) = &self.user_fn.open {
+      f.call::<_, bool>(
+        self.lua.create_string(name.as_bytes())?
+      )?;
+    }
+    Ok(())
+  }
+  pub fn close_file(&self, name: &OsStr) -> mlua::Result<()> {
+    if let Some(f) = &self.user_fn.close {
+      f.call::<_, bool>(
+        self.lua.create_string(name.as_bytes())?
+      )?;
+    }
+    Ok(())
   }
 }
 
@@ -88,7 +131,7 @@ impl Filesystem for TransformFs {
     };
 
     let full_name = Path::new(parent_name).join(name);
-    match self.read_metadata(&full_name) {
+    match self.read_metadata(full_name.as_os_str()) {
       Ok(attr) => {
         self.inode_map.insert(attr.ino, full_name.into_os_string());
         reply.entry(&self.ttl, &attr, 0);
@@ -100,18 +143,48 @@ impl Filesystem for TransformFs {
     };
   }
 
-  fn open(&mut self, _req: &Request, ino: u64, flags: i32, reply: fuser::ReplyOpen) {
+  fn open(&mut self, _req: &Request, ino: u64, _flags: i32, reply: fuser::ReplyOpen) {
     let Some(name) = self.inode_map.get(&ino) else {
       reply.error(ENOENT as i32);
       return;
     };
 
-    match fcntl::open(name.as_os_str(), OFlag::from_bits_truncate(flags), sys::stat::Mode::empty()) {
-      Ok(fd) => {
-        reply.opened(fd as u64, flags as u32);
+    match self.open_file(name) {
+      Ok(_) => {
+        // Return dummy fh and flags as we only use ino in read
+        reply.opened(0, 0);
+        return;
       },
-      Err(errno) => {
-        reply.error(errno as i32);
+      Err(err) => {
+        warn!("Error opening file {:?}: {}", name, err);
+      }
+    }
+    reply.error(EIO as i32);
+  }
+
+  fn release(
+    &mut self,
+    _req: &Request<'_>,
+    ino: u64,
+    _fh: u64,
+    _flags: i32,
+    _lock_owner: Option<u64>,
+    _flush: bool,
+    reply: fuser::ReplyEmpty,
+  ) {
+    let Some(name) = self.inode_map.get(&ino) else {
+      reply.error(ENOENT as i32);
+      return;
+    };
+
+    match self.close_file(name) {
+      Ok(_) => {
+        reply.ok();
+        return;
+      },
+      Err(err) => {
+        warn!("Error closing file {:?}: {}", name, err);
+        reply.error(EIO as i32);
       }
     };
   }
