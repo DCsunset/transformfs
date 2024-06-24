@@ -2,8 +2,10 @@
 
 A read-only FUSE filesystem to transform the content of files with Lua.
 
-In transformfs, the content of files can be transformed by user-defined Lua scripts
+In transformfs, the content of files can be transformed on demand by user-defined Lua scripts
 while preserving the same directory structure.
+
+This filesystem is useful to transform data without duplicating the original files.
 
 ## Installation
 
@@ -12,6 +14,10 @@ while preserving the same directory structure.
 ```shell
 cargo install transformfs
 ```
+
+### Pre-built binaries
+
+Pre-built binaries for different architecture can be found in GitHub release.
 
 
 ## Usage
