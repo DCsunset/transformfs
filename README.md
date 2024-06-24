@@ -17,6 +17,12 @@ This filesystem is useful to transform data without duplicating the original fil
 cargo install transformfs
 ```
 
+### Nix
+
+Transformfs is also packaged as an NUR package `nur.repos.dcsunset.transformfs`.
+You can install it by including it in your nix config.
+
+
 
 ## Usage
 
