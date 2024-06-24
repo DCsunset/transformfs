@@ -5,95 +5,19 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
-    inputs:
-      cargo_release:
-        description: Release Cargo package
-        type: boolean
-        required: true
-        default: false
-      github_release:
-        description: Release GitHub package
-        type: boolean
-        required: true
-        default: false
-      github_release_tag:
-        description: Tag for GitHub release
-        type: string
-        required: true
-        default: main
-
-env:
-  # set preview mode if not triggered by tags
-  tag_release: ${{ startsWith(github.ref, 'refs/tags/') }}
 
 jobs:
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        target:
-          - x86_64-unknown-linux-musl
-          - aarch64-unknown-linux-musl
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Install cross
-        run: |
-          cargo install cross --git https://github.com/cross-rs/cross.git
-          echo "CARGO=cross" >> $GITHUB_ENV
-
-      - name: Build
-        run: |
-          ${{ env.CARGO }} build --release --locked --target ${{ matrix.target }}
-
-      - uses: actions/upload-artifact@v3
-        with:
-          name: transform-${{ matrix.target }}
-          path: target/${{ matrix.target }}/release/transformfs
-
   publish:
     permissions:
       contents: write
     name: Publish
-    needs: [build]
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v3
       - uses: actions/download-artifact@v3
-
-      - name: Rename and list artifacts
-        run: |
-          mkdir dist
-          for name in transformfs-*; do
-            mv $name/transformfs dist/$name
-            rmdir $name
-          done
-          ls dist
+      - uses: dtolnay/rust-toolchain@stable
 
       - name: Cargo release
-        if: env.tag_release == 'true' || inputs.cargo_release
         run: cargo publish --token ${{ secrets.CARGO_TOKEN }}
-
-      - name: GitHub release from tag
-        if: env.tag_release == 'true'
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: dist/*
-          file_glob: true
-          overwrite: true
-
-      - name: GitHub release manually
-        if: env.tag_release == 'false' && inputs.github_release
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: dist/*
-          file_glob: true
-          tag: ${{ inputs.github_release_tag }}
-          overwrite: true
-
 

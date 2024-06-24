@@ -15,10 +15,6 @@ This filesystem is useful to transform data without duplicating the original fil
 cargo install transformfs
 ```
 
-### Pre-built binaries
-
-Pre-built binaries for different architecture can be found in GitHub release.
-
 
 ## Usage
 
