@@ -1,5 +1,7 @@
 # transformfs
 
+[![Crates.io Version](https://img.shields.io/crates/v/transformfs)](https://crates.io/crates/transformfs)
+
 A read-only FUSE filesystem to transform the content of files with Lua.
 
 In transformfs, the content of files can be transformed on demand by user-defined Lua scripts
@@ -31,6 +33,9 @@ The Lua script must return a module with the following functions:
 - `close(filename)`: (optional) Called when closing a file if defined. Useful to reclaim resources
 - `read_metadata(filename)`: Return the metadata of the file as a table. `size` can be set if a user wants to change the size.
 - `read_data(filename, offset, size)`: Return the content of the file as string at a specific position.
+
+Transformfs uses LuaJIT for performance reason as Lua code is executed very frequently for large files.
+Thus it may not support new features in Lua 5.3 or 5.4 at the time of writing.
 
 See example scripts in `examples` directory.
 
