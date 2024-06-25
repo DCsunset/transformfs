@@ -40,6 +40,7 @@ pub struct UserFn {
 fn load_user_fn(table: &Table, name: &str) -> mlua::Result<Option<OwnedFunction>> {
   Ok(
     if table.contains_key(name)? {
+      // Bind the table itself as first arg (self) for method
       Some(table.get::<_, Function>(name)?.bind(table)?.into_owned())
     } else {
       None
