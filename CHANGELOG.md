@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.2.0](https://github.com/DCsunset/transformfs/compare/v0.1.1...v0.2.0) (2024-06-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* support filter_file as an alternative to map_filename
+* record filename mapping and remove unmap_filename
+
+### Features
+
+* record filename mapping and remove unmap_filename ([ef4e1d6](https://github.com/DCsunset/transformfs/commit/ef4e1d6802b568b846c25af3c055dd5fdba219f9))
+* support filter_file as an alternative to map_filename ([191eb54](https://github.com/DCsunset/transformfs/commit/191eb54dc7168b63c34e31cf52fdea27166a77cd))
+
 ## [0.1.1](https://github.com/DCsunset/transformfs/compare/v0.1.0...v0.1.1) (2024-06-26)
 
 
