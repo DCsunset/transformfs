@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.1](https://github.com/DCsunset/transformfs/compare/v0.1.0...v0.1.1) (2024-06-26)
+
+
+### Features
+
+* support channing filenames ([6d3505d](https://github.com/DCsunset/transformfs/commit/6d3505d4f2dead38ebbc848af117e7a1cb45660f))
+
+
+### Bug Fixes
+
+* remove unnecessary entries ([3783a60](https://github.com/DCsunset/transformfs/commit/3783a6002889c16ff92532d7a2d92307f05754a0))
+
 ## 0.1.0 (2024-06-24)
 
 

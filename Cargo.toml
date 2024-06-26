@@ -1,6 +1,6 @@
 [package]
 name = "transformfs"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["DCsunset"]
 description = "A read-only FUSE filesystem to transform the content of files with Lua"
