@@ -35,6 +35,8 @@ fusermount -u <mnt_point>
 ```
 
 The Lua script must return a module (`M`) with the following functions:
+- `M:map_filename(parent, filename)`: (optional) Map the filename to a new one. The argument is the parent dir and original filename. Other functions (except `unmap_filename`) will still receive original filenames.
+- `M:unmap_filename(parent, filename)`: (optional) Map the new filename back to original one. Must be defined if `map_filename` is defined.
 - `M:open(filename)`: (optional) Called when opening a file if defined. Useful to open the file in advance for performance
 - `M:close(filename)`: (optional) Called when closing a file if defined. Useful to reclaim resources
 - `M:read_metadata(filename)`: Return the metadata of the file as a table. `size` can be set if a user wants to change the size.

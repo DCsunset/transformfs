@@ -31,6 +31,8 @@ use anyhow::anyhow;
 use crate::utils;
 
 pub struct UserFn {
+  map_filename: Option<OwnedFunction>,
+  unmap_filename: Option<OwnedFunction>,
   open: Option<OwnedFunction>,
   close: Option<OwnedFunction>,
   read_data: OwnedFunction,
@@ -66,6 +68,8 @@ impl TransformFs {
     let table: OwnedTable = lua.load(fs::read_to_string(script)?).eval()?;
     let table_ref = table.to_ref();
     let user_fn = UserFn {
+      map_filename: load_user_fn(&table_ref, "map_filename")?,
+      unmap_filename: load_user_fn(&table_ref, "unmap_filename")?,
       open: load_user_fn(&table_ref, "open")?,
       close: load_user_fn(&table_ref, "close")?,
       read_data: load_user_fn(&table_ref, "read_data")?.ok_or(
@@ -75,6 +79,10 @@ impl TransformFs {
         anyhow!("read_metadata not defined in user script")
       )?
     };
+    if user_fn.map_filename.is_some() != user_fn.unmap_filename.is_some() {
+      return Err(anyhow!("map_filename and unmap_filename must be defined at the same time"));
+    }
+
     let mut inode_map = HashMap::new();
     inode_map.insert(FUSE_ROOT_ID, dir.clone().into());
     Ok(Self {
@@ -85,6 +93,27 @@ impl TransformFs {
       inode_map
     })
   }
+
+  pub fn map_filename(&self, parent: &OsStr, filename: &OsStr) -> mlua::Result<Option<LuaString>> {
+    let Some(f) = &self.user_fn.map_filename else {
+      return Ok(None);
+    };
+    let n = f.call::<_, LuaString>(
+      (self.lua.create_string(parent.as_bytes())?, self.lua.create_string(filename.as_bytes())?)
+    )?;
+    Ok(Some(n))
+  }
+
+  pub fn unmap_filename(&self, parent: &OsStr, filename: &OsStr) -> mlua::Result<Option<LuaString>> {
+    let Some(f) = &self.user_fn.unmap_filename else {
+      return Ok(None);
+    };
+    let n = f.call::<_, LuaString>(
+      (self.lua.create_string(parent.as_bytes())?, self.lua.create_string(filename.as_bytes())?)
+    )?;
+    Ok(Some(n))
+  }
+
 
   pub fn read_data(&self, name: &OsStr, offset: i64, size: u32) -> mlua::Result<LuaString> {
     let data = self.user_fn.read_data.call::<_, LuaString>(
@@ -131,7 +160,21 @@ impl Filesystem for TransformFs {
       return;
     };
 
-    let full_name = Path::new(parent_name).join(name);
+    // map back to real name
+    // (must convert to OsString as LuaString borrows self, which conflicts with the following borrow)
+    let real_name = match self.unmap_filename(parent_name, name) {
+      Ok(n) => n.map(|v| OsStr::from_bytes(v.as_bytes()).to_os_string()),
+      Err(err) => {
+        warn!("Error reading file {:?}: {}", name, err);
+        reply.error(EIO as i32);
+        return;
+      }
+    };
+
+    let full_name = Path::new(parent_name).join(
+      real_name.as_ref().map(|v| v.as_os_str())
+        .unwrap_or(name)
+    );
     match self.read_metadata(full_name.as_os_str()) {
       Ok(attr) => {
         self.inode_map.insert(attr.ino, full_name.into_os_string());
@@ -140,6 +183,7 @@ impl Filesystem for TransformFs {
       Err(err) => {
         warn!("Error reading file {:?}: {}", name, err);
         reply.error(EIO as i32);
+        return;
       }
     };
   }
@@ -231,11 +275,24 @@ impl Filesystem for TransformFs {
         ];
         entries.extend(it);
         for (i, e) in entries.iter().enumerate().skip(offset as usize) {
-          // offset is used by kernel for future readdir calls (should be next entry)
-          if reply.add(e.0, (i+1) as i64, e.1, &e.2) {
-            // return true when buffer full
-            break;
-          }
+          match self.map_filename(name, &e.2) {
+            Ok(n) => {
+              // offset is used by kernel for future readdir calls (should be next entry)
+              if reply.add(
+                e.0,
+                (i+1) as i64,
+                e.1,
+                n.as_ref().map(|v| OsStr::from_bytes(v.as_bytes()))
+                  .unwrap_or(&e.2)
+              ) {
+                // return true when buffer full
+                break;
+              }
+            },
+            Err(err) => {
+              warn!("Error reading dir entry {:?}/{:?}: {}", name, e, err);
+            }
+          };
         }
         reply.ok();
       },

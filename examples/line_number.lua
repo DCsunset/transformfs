@@ -103,13 +103,20 @@ local function read_from_blocks(file, blocks, blocks_len, offset, size)
   return data
 end
 
+function M:map_filename(_, filename)
+  return filename .. ".txt"
+end
+
+function M:unmap_filename(_, filename)
+  return string.sub(filename, 0, -5)
+end
+
 function M:open(filename)
   local state = self.states[filename]
   if state.file_handles == 0 then
     state.file = assert(io.open(filename, "r"))
   end
   state.file_handles = state.file_handles + 1
-  print("Opened handles:", state.file_handles)
 end
 
 function M:close(filename)
@@ -119,7 +126,6 @@ function M:close(filename)
     state.file:close()
     state.file = nil
   end
-  print("Opened handles:", state.file_handles)
 end
 
 function M:read_metadata(filename)
