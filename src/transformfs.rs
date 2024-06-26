@@ -268,13 +268,7 @@ impl Filesystem for TransformFs {
 
     match utils::read_dir(name) {
       Ok(it) => {
-        // special entries
-        let mut entries = vec![
-          // (ino, FileType::Directory, OsString::from("."))
-          // (FUSE_ROOT_ID, FileType::Directory, OsString::from("..")),
-        ];
-        entries.extend(it);
-        for (i, e) in entries.iter().enumerate().skip(offset as usize) {
+        for (i, e) in it.enumerate().skip(offset as usize) {
           match self.map_filename(name, &e.2) {
             Ok(n) => {
               // offset is used by kernel for future readdir calls (should be next entry)
