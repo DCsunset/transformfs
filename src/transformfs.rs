@@ -32,7 +32,6 @@ use crate::utils;
 
 pub struct UserFn {
   map_filename: Option<OwnedFunction>,
-  unmap_filename: Option<OwnedFunction>,
   open: Option<OwnedFunction>,
   close: Option<OwnedFunction>,
   read_data: OwnedFunction,
@@ -59,7 +58,10 @@ pub struct TransformFs {
   user_fn: UserFn,
 
   /// Map inode to file name
-  inode_map: HashMap<u64, OsString>
+  inode_map: HashMap<u64, OsString>,
+  /// Map user-defined filename to original name
+  /// (parent, new_name) -> orig_name
+  filename_map: HashMap<(OsString, OsString), OsString>
 }
 
 impl TransformFs {
@@ -69,7 +71,6 @@ impl TransformFs {
     let table_ref = table.to_ref();
     let user_fn = UserFn {
       map_filename: load_user_fn(&table_ref, "map_filename")?,
-      unmap_filename: load_user_fn(&table_ref, "unmap_filename")?,
       open: load_user_fn(&table_ref, "open")?,
       close: load_user_fn(&table_ref, "close")?,
       read_data: load_user_fn(&table_ref, "read_data")?.ok_or(
@@ -79,9 +80,6 @@ impl TransformFs {
         anyhow!("read_metadata not defined in user script")
       )?
     };
-    if user_fn.map_filename.is_some() != user_fn.unmap_filename.is_some() {
-      return Err(anyhow!("map_filename and unmap_filename must be defined at the same time"));
-    }
 
     let mut inode_map = HashMap::new();
     inode_map.insert(FUSE_ROOT_ID, dir.clone().into());
@@ -90,30 +88,29 @@ impl TransformFs {
       ttl,
       lua,
       user_fn,
-      inode_map
+      inode_map,
+      filename_map: HashMap::new()
     })
   }
 
-  pub fn map_filename(&self, parent: &OsStr, filename: &OsStr) -> mlua::Result<Option<LuaString>> {
+  pub fn map_filename(&mut self, parent: &OsStr, filename: &OsStr, file_type: &fuser::FileType) -> anyhow::Result<Option<LuaString>> {
     let Some(f) = &self.user_fn.map_filename else {
       return Ok(None);
     };
+
     let n = f.call::<_, LuaString>(
-      (self.lua.create_string(parent.as_bytes())?, self.lua.create_string(filename.as_bytes())?)
+      (self.lua.create_string(parent.as_bytes())?, self.lua.create_string(filename.as_bytes())?, serde_json::to_value(file_type)?.as_str().unwrap())
     )?;
+    self.filename_map.insert(
+      (parent.to_os_string(), OsStr::from_bytes(n.as_bytes()).to_os_string()),
+      filename.to_os_string()
+    );
     Ok(Some(n))
   }
 
-  pub fn unmap_filename(&self, parent: &OsStr, filename: &OsStr) -> mlua::Result<Option<LuaString>> {
-    let Some(f) = &self.user_fn.unmap_filename else {
-      return Ok(None);
-    };
-    let n = f.call::<_, LuaString>(
-      (self.lua.create_string(parent.as_bytes())?, self.lua.create_string(filename.as_bytes())?)
-    )?;
-    Ok(Some(n))
+  pub fn unmap_filename(&self, parent: &OsStr, filename: &OsStr) -> Option<&OsString> {
+    self.filename_map.get(&(parent.into(), filename.into()))
   }
-
 
   pub fn read_data(&self, name: &OsStr, offset: i64, size: u32) -> mlua::Result<LuaString> {
     let data = self.user_fn.read_data.call::<_, LuaString>(
@@ -160,19 +157,12 @@ impl Filesystem for TransformFs {
       return;
     };
 
-    // map back to real name
+    // map back to original name
     // (must convert to OsString as LuaString borrows self, which conflicts with the following borrow)
-    let real_name = match self.unmap_filename(parent_name, name) {
-      Ok(n) => n.map(|v| OsStr::from_bytes(v.as_bytes()).to_os_string()),
-      Err(err) => {
-        warn!("Error reading file {:?}: {}", name, err);
-        reply.error(EIO as i32);
-        return;
-      }
-    };
+    let orig_name = self.unmap_filename(parent_name, name);
 
     let full_name = Path::new(parent_name).join(
-      real_name.as_ref().map(|v| v.as_os_str())
+      orig_name.as_ref().map(|v| v.as_os_str())
         .unwrap_or(name)
     );
     match self.read_metadata(full_name.as_os_str()) {
@@ -261,15 +251,15 @@ impl Filesystem for TransformFs {
   ) {
     assert!(offset >= 0);
 
-    let Some(name) = self.inode_map.get(&ino) else {
+    let Some(name) = self.inode_map.get(&ino).map(|v| v.to_os_string()) else {
       reply.error(ENOENT as i32);
       return;
     };
 
-    match utils::read_dir(name) {
+    match utils::read_dir(&name) {
       Ok(it) => {
         for (i, e) in it.enumerate().skip(offset as usize) {
-          match self.map_filename(name, &e.2) {
+          match self.map_filename(&name, &e.2, &e.1) {
             Ok(n) => {
               // offset is used by kernel for future readdir calls (should be next entry)
               if reply.add(

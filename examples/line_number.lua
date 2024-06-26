@@ -103,12 +103,12 @@ local function read_from_blocks(file, blocks, blocks_len, offset, size)
   return data
 end
 
-function M:map_filename(_, filename)
-  return filename .. ".txt"
-end
-
-function M:unmap_filename(_, filename)
-  return string.sub(filename, 0, -5)
+function M:map_filename(_, filename, file_type)
+  if file_type ~= "Directory" then
+    return filename .. ".txt"
+  else
+    return filename
+  end
 end
 
 function M:open(filename)
