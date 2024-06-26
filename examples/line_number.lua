@@ -103,11 +103,14 @@ local function read_from_blocks(file, blocks, blocks_len, offset, size)
   return data
 end
 
-function M:map_filename(_, filename, file_type)
+function M:filter_file(_, filename, file_type)
   if file_type ~= "Directory" then
-    return filename .. ".txt"
+    return {
+      exclude = not not string.match(filename, "exclude"),
+      filename = filename .. ".txt"
+    }
   else
-    return filename
+    return { filename = filename }
   end
 end
 

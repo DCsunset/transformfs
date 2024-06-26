@@ -31,7 +31,7 @@ use anyhow::anyhow;
 use crate::utils;
 
 pub struct UserFn {
-  map_filename: Option<OwnedFunction>,
+  filter_file: Option<OwnedFunction>,
   open: Option<OwnedFunction>,
   close: Option<OwnedFunction>,
   read_data: OwnedFunction,
@@ -70,7 +70,7 @@ impl TransformFs {
     let table: OwnedTable = lua.load(fs::read_to_string(script)?).eval()?;
     let table_ref = table.to_ref();
     let user_fn = UserFn {
-      map_filename: load_user_fn(&table_ref, "map_filename")?,
+      filter_file: load_user_fn(&table_ref, "filter_file")?,
       open: load_user_fn(&table_ref, "open")?,
       close: load_user_fn(&table_ref, "close")?,
       read_data: load_user_fn(&table_ref, "read_data")?.ok_or(
@@ -93,19 +93,26 @@ impl TransformFs {
     })
   }
 
-  pub fn map_filename(&mut self, parent: &OsStr, filename: &OsStr, file_type: &fuser::FileType) -> anyhow::Result<Option<LuaString>> {
-    let Some(f) = &self.user_fn.map_filename else {
-      return Ok(None);
+  /// Return (exclude, filename)
+  pub fn filter_file(&mut self, parent: &OsStr, filename: &OsStr, file_type: &fuser::FileType) -> anyhow::Result<(bool, Option<LuaString>)> {
+    let Some(f) = &self.user_fn.filter_file else {
+      return Ok((false, None));
     };
 
-    let n = f.call::<_, LuaString>(
+    let table = f.call::<_, Table>(
       (self.lua.create_string(parent.as_bytes())?, self.lua.create_string(filename.as_bytes())?, serde_json::to_value(file_type)?.as_str().unwrap())
     )?;
-    self.filename_map.insert(
-      (parent.to_os_string(), OsStr::from_bytes(n.as_bytes()).to_os_string()),
-      filename.to_os_string()
-    );
-    Ok(Some(n))
+    let exclude = table.get::<_, Option<bool>>("exclude")?.unwrap_or(false);
+    let name: Option<LuaString> = table.get("filename")?;
+    if let Some(n) = &name {
+      if !exclude {
+        self.filename_map.insert(
+          (parent.to_os_string(), OsStr::from_bytes(n.as_bytes()).to_os_string()),
+          filename.to_os_string()
+        );
+      }
+    }
+    Ok((exclude, name))
   }
 
   pub fn unmap_filename(&self, parent: &OsStr, filename: &OsStr) -> Option<&OsString> {
@@ -259,8 +266,11 @@ impl Filesystem for TransformFs {
     match utils::read_dir(&name) {
       Ok(it) => {
         for (i, e) in it.enumerate().skip(offset as usize) {
-          match self.map_filename(&name, &e.2, &e.1) {
-            Ok(n) => {
+          match self.filter_file(&name, &e.2, &e.1) {
+            Ok((exclude, n)) => {
+              if exclude {
+                continue;
+              }
               // offset is used by kernel for future readdir calls (should be next entry)
               if reply.add(
                 e.0,
