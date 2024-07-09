@@ -34,16 +34,16 @@ transformfs -s <lua_script> <src_dir> <mnt_point>
 fusermount -u <mnt_point>
 ```
 
-The Lua script must return a module (`M`) with the following functions:
-- `M:filter_file(parent, filename, file_type)`: (optional) Filter the file. The arguments are the parent dir, original filename and file type.
+The Lua script must return a module (table) with the following functions as its fields:
+- `filter_file(parent, filename, file_type)`: (optional) Filter the file. The arguments are the parent dir, original filename and file type.
   - `file_type` is a string of the [Enum](https://docs.rs/fuser/latest/fuser/enum.FileType.html).
   - The return value must be a table. It can contain the following optional fields:
     - `filename`: (string) change to a new filename
     - `exclude`: (bool) exclude this file
-- `M:open(filename)`: (optional) Called when opening a file if defined. Useful to open the file in advance for performance
-- `M:close(filename)`: (optional) Called when closing a file if defined. Useful to reclaim resources
-- `M:read_metadata(filename)`: Return the metadata of the file as a table. `size` can be set if a user wants to change the size.
-- `M:read_data(filename, offset, size)`: Return the content of the file as string at a specific position.
+- `open(filename)`: (optional) Called when opening a file if defined. Useful to open the file in advance for performance
+- `close(filename)`: (optional) Called when closing a file if defined. Useful to reclaim resources
+- `read_metadata(filename)`: Return the metadata of the file as a table. `size` can be set if a user wants to change the size.
+- `read_data(filename, offset, size)`: Return the content of the file as string at a specific position.
 
 Transformfs uses LuaJIT for performance reason as Lua code is executed very frequently for large files.
 Thus it may not support new features in Lua 5.3 or 5.4 at the time of writing.

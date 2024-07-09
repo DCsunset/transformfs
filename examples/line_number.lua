@@ -103,7 +103,7 @@ local function read_from_blocks(file, blocks, blocks_len, offset, size)
   return data
 end
 
-function M:filter_file(_, filename, file_type)
+function M.filter_file(_, filename, file_type)
   if file_type ~= "Directory" then
     return {
       exclude = not not string.match(filename, "exclude"),
@@ -114,16 +114,16 @@ function M:filter_file(_, filename, file_type)
   end
 end
 
-function M:open(filename)
-  local state = self.states[filename]
+function M.open(filename)
+  local state = M.states[filename]
   if state.file_handles == 0 then
     state.file = assert(io.open(filename, "r"))
   end
   state.file_handles = state.file_handles + 1
 end
 
-function M:close(filename)
-  local state = self.states[filename]
+function M.close(filename)
+  local state = M.states[filename]
   state.file_handles = state.file_handles - 1
   if state.file_handles == 0 then
     state.file:close()
@@ -131,16 +131,16 @@ function M:close(filename)
   end
 end
 
-function M:read_metadata(filename)
+function M.read_metadata(filename)
   local state = record_line_offset(filename)
-  self.states[filename] = state
+  M.states[filename] = state
   return {
     size = state.file_size
   }
 end
 
-function M:read_data(filename, offset, size)
-  local state = self.states[filename]
+function M.read_data(filename, offset, size)
+  local state = M.states[filename]
   local data = read_from_blocks(state.file, state.blocks, state.blocks_len, offset, size)
   return data
 end

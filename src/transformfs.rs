@@ -19,7 +19,7 @@ use fuser::{
   ReplyDirectory,
   FUSE_ROOT_ID
 };
-use mlua::{Function, Lua, OwnedFunction, OwnedTable, String as LuaString, Table};
+use mlua::{Lua, OwnedFunction, OwnedTable, String as LuaString, Table};
 use std::{
   collections::HashMap, ffi::{OsStr, OsString}, fs, os::unix::ffi::OsStrExt, path::{Path, PathBuf}, time::Duration
 };
@@ -41,8 +41,7 @@ pub struct UserFn {
 fn load_user_fn(table: &Table, name: &str) -> mlua::Result<Option<OwnedFunction>> {
   Ok(
     if table.contains_key(name)? {
-      // Bind the table itself as first arg (self) for method
-      Some(table.get::<_, Function>(name)?.bind(table)?.into_owned())
+      Some(table.get::<_, OwnedFunction>(name)?)
     } else {
       None
     }
@@ -199,9 +198,9 @@ impl Filesystem for TransformFs {
       },
       Err(err) => {
         warn!("Error opening file {:?}: {}", name, err);
+        reply.error(EIO as i32);
       }
     }
-    reply.error(EIO as i32);
   }
 
   fn release(
