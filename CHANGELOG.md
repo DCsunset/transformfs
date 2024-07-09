@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.3.0](https://github.com/DCsunset/transformfs/compare/v0.2.0...v0.3.0) (2024-07-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* remove unnecessary self arguments in interfaces
+
+### Features
+
+* remove unnecessary self arguments in interfaces ([4e56d4d](https://github.com/DCsunset/transformfs/commit/4e56d4d5125df666e58324caa4fc1823b65c07eb))
+
 ## [0.2.0](https://github.com/DCsunset/transformfs/compare/v0.1.1...v0.2.0) (2024-06-26)
 
 
