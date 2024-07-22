@@ -2,9 +2,9 @@ local M = {
   states = {}
 };
 
-local function find_block(blocks, blocks_len, offset)
+local function find_block(blocks, offset)
   local l = 1
-  local r = blocks_len
+  local r = #blocks
   while true do
     if l >= r then
       return l
@@ -56,7 +56,6 @@ local function record_line_offset(filename)
    end
    return {
      blocks = blocks;
-     blocks_len = i - 1;
      file_size = off - 1;
      -- file handle
      file = nil;
@@ -78,8 +77,8 @@ local function read_block(file, block, offset, size)
 end
 
 
-local function read_from_blocks(file, blocks, blocks_len, offset, size)
-  local i = find_block(blocks, blocks_len, offset)
+local function read_from_blocks(file, blocks, offset, size)
+  local i = find_block(blocks, offset)
   local b = blocks[i]
   assert(b.offset <= offset)
 
@@ -90,7 +89,7 @@ local function read_from_blocks(file, blocks, blocks_len, offset, size)
   end
 
   local data = "";
-  while size > 0 and i <= blocks_len do
+  while size > 0 and i <= #blocks do
     local s = b.size - off
     local size_to_read = math.min(s, size)
     data = data .. read_block(file, b, off, size_to_read)
@@ -141,7 +140,7 @@ end
 
 function M.read_data(filename, offset, size)
   local state = M.states[filename]
-  local data = read_from_blocks(state.file, state.blocks, state.blocks_len, offset, size)
+  local data = read_from_blocks(state.file, state.blocks, offset, size)
   return data
 end
 
