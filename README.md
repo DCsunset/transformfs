@@ -2,12 +2,13 @@
 
 [![Crates.io Version](https://img.shields.io/crates/v/transformfs)](https://crates.io/crates/transformfs)
 
-A read-only FUSE filesystem to transform the content of files with Lua.
+A read-only FUSE filesystem to transform input files to output files with Lua script.
 
-In transformfs, the content of files can be transformed on demand by user-defined Lua scripts
-while preserving the same directory structure.
+In transformfs, the input files can be transformed on demand by the user-defined Lua script.
+The inputs are a list of files passed to the user script,
+and the user script returns a list of files to generate dynamically.
 
-This filesystem is useful to transform data without duplicating the original files.
+This filesystem is useful to transform data without duplicating or modifying the original files.
 
 ## Installation
 
@@ -23,19 +24,20 @@ Transformfs is also packaged as an NUR package `nur.repos.dcsunset.transformfs`.
 You can install it by including it in your nix config.
 
 
-
 ## Usage
 
 ``` shell
 # mount transformfs
-transformfs -s <lua_script> <src_dir> <mnt_point>
+transformfs -s <lua_script> [-i <input1>...] <mnt_point>
 
 # umount
 fusermount -u <mnt_point>
 ```
 
-The Lua script must return a module (table) with the following functions as its fields:
-- `transform(inputs)`: Function to transform inputs (a list of strings) to outputs. It should return a list of `Output`.
+The inputs can be zero, one, or multiple files or directories (directories are resolved to individual files).
+
+The user Lua script must return a module (table) with the following functions as its fields:
+- `transform(inputs)`: Function to transform inputs (a list of file paths) to outputs. It should return a list of `Output`.
 
 Each `Output` is table with the following fields:
 - `path`: Path of the file
@@ -46,13 +48,13 @@ Each `Output` is table with the following fields:
 
 `FileMetadata` fields:
 - `size`: Size of the file
-- `block_size`: (optional) Block size of the file. (default: 512)
+- `block_size`: (optional) Block size of the file (default: 512)
 
 
 Transformfs uses LuaJIT for performance reason as Lua code is executed very frequently for large files.
 Thus it may not support new features in Lua 5.3 or 5.4 at the time of writing.
 
-See example scripts in `examples` directory.
+See example scripts in `examples` directory for more details and `transformfs --help`.
 
 
 ## License
