@@ -116,7 +116,6 @@ function M.transform(inputs)
       },
 
       open = function()
-        print("Calling open")
         if state.file_handles == 0 then
           state.file = assert(io.open(name, "r"))
         end
@@ -124,7 +123,6 @@ function M.transform(inputs)
       end,
 
       close = function()
-        print("Calling close")
         state.file_handles = state.file_handles - 1
         if state.file_handles == 0 then
           state.file:close()
@@ -133,7 +131,6 @@ function M.transform(inputs)
       end,
 
       read = function(offset, size)
-        print("Calling read")
         return read_from_blocks(state.file, state.blocks, offset, size)
       end
     }

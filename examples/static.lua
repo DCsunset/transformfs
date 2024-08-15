@@ -4,7 +4,7 @@ local data = "hello, world"
 
 function M.transform(inputs)
   local outputs = {}
-  for i = 1, #input do
+  for i = 1, #inputs do
     print(inputs[i])
     outputs[#outputs+1] = {
       path = inputs[i] .. ".static",
