@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.4.0](https://github.com/DCsunset/transformfs/compare/v0.3.0...v0.4.0) (2024-08-15)
+
+
+### ⚠ BREAKING CHANGES
+
+* support setting output by user script
+
+### Features
+
+* support setting output by user script ([a4b339d](https://github.com/DCsunset/transformfs/commit/a4b339d4ecdddfb2abba4b91e07e32853c21814a))
+* support updating on timeout ([38e9624](https://github.com/DCsunset/transformfs/commit/38e9624e6f05da0fe94d01436c9a68e623b74179))
+
 ## [0.3.0](https://github.com/DCsunset/transformfs/compare/v0.2.0...v0.3.0) (2024-07-09)
 
 
