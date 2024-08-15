@@ -14,7 +14,7 @@ categories = ["filesystem", "command-line-utilities"]
 
 [dependencies]
 mlua = { version = "0.10.0-beta.1", features = ["luajit", "vendored"] }
-fuser = { version = "0.14", default-features = false, features = [ "serializable" ] }
+fuser = { version = "0.14", default-features = false }
 log = "0.4"
 env_logger = "0.11"
 nix = { version = "0.29", features = ["user"] }

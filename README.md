@@ -35,9 +35,9 @@ fusermount -u <mnt_point>
 ```
 
 The Lua script must return a module (table) with the following functions as its fields:
-- `transform(input_files)`: Function to transform inputs (a list of strings) to outputs. It should return `Output`.
+- `transform(inputs)`: Function to transform inputs (a list of strings) to outputs. It should return a list of `Output`.
 
-`Output` is a list of tables with the following fields:
+Each `Output` is table with the following fields:
 - `path`: Path of the file
 - `metadata`: Return the metadata of the file as `FileMetadata`.
 - `open()`: (optional) Called when opening a file if defined. Useful to open the file in advance for performance

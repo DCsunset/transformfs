@@ -216,7 +216,6 @@ dependencies = [
  "log",
  "memchr",
  "page_size",
- "serde",
  "smallvec",
  "zerocopy",
 ]

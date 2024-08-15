@@ -17,7 +17,7 @@ mod transformfs;
 mod utils;
 mod output;
 
-use transformfs::TransformFs;
+use transformfs::{Config, TransformFs};
 use std::{path::PathBuf, time::Duration};
 use daemonize::Daemonize;
 use clap::Parser;
@@ -31,7 +31,7 @@ struct Args {
 
   /// The input dirs/files to pass to transform function
   #[arg(short, long)]
-  input: Vec<PathBuf>,
+  inputs: Vec<PathBuf>,
 
   /// script
   #[arg(short, long)]
@@ -45,9 +45,9 @@ struct Args {
   #[arg(long)]
   allow_root: bool,
 
-  /// Time to live for metadata and cache in seconds
-  #[arg(short, long, default_value_t = 1)]
-  ttl: u64,
+  /// Timeout for output files (rerun transform on timeout)
+  #[arg(short, long, default_value_t = u64::MAX)]
+  timeout: u64,
 
   /// Unmount automatically when program exists.
   /// (need --allow-root or --allow-other; auto set one if not specified)
@@ -98,7 +98,9 @@ fn main() -> anyhow::Result<()> {
   }
 
   fuser::mount2(
-    TransformFs::init(args.input, args.script, Duration::from_secs(args.ttl))?,
+    TransformFs::init(args.inputs, args.script, Config {
+      timeout: Duration::from_secs(args.timeout)
+    })?,
     args.mount_point,
     &options
   )?;

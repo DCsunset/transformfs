@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use log::error;
+use log::{error, info};
 use fuser::{Filesystem, Request};
 use mlua::{FromLua, Function, Lua, String as LuaString, Table};
 use std::{ffi::OsStr, fs, path::{Path, PathBuf}, time::{Duration, SystemTime}
@@ -48,14 +48,20 @@ impl FromLua for UserFn {
   }
 }
 
+pub struct Config {
+  pub timeout: Duration,
+}
 
 pub struct TransformFs {
-  input: Vec<PathBuf>,
-  ttl: Duration,
+  inputs: Vec<PathBuf>,
+  config: Config,
+
   /// Lua state with loaded script
   lua: Lua,
   /// Loaded user-defined function
   user_fn: UserFn,
+  /// Last updated time
+  last_updated: SystemTime,
 
   /// Output
   output: Output,
@@ -64,16 +70,17 @@ pub struct TransformFs {
 }
 
 impl TransformFs {
-  pub fn init(input: Vec<PathBuf>, script: PathBuf, ttl: Duration) -> anyhow::Result<Self> {
+  pub fn init(inputs: Vec<PathBuf>, script: PathBuf, config: Config) -> anyhow::Result<Self> {
     let lua = Lua::new();
     let user_fn: UserFn = lua.load(fs::read_to_string(script)?).eval()?;
-    let output = Output::init(&lua, &user_fn.transform, &input)?;
+    let output = Output::init(&lua, &user_fn.transform, &inputs)?;
     let cur_time = SystemTime::now();
     Ok(Self {
-      input,
-      ttl,
+      inputs,
+      config,
       lua,
       user_fn,
+      last_updated: cur_time,
       output,
       default_attr: fuser::FileAttr {
         // must be overwritten
@@ -96,6 +103,27 @@ impl TransformFs {
         flags: 0
       }
     })
+  }
+
+  /// Update output when timeout
+  pub fn update(&mut self) {
+    match self.last_updated.elapsed() {
+      Ok(elapsed) => {
+        if elapsed <= self.config.timeout {
+          return;
+        }
+      },
+      Err(err) => {
+        error!("Failed to get system time: {}", err);
+        return;
+      }
+    };
+
+    info!("Update output on timeout");
+    match Output::init(&self.lua, &self.user_fn.transform, &self.inputs) {
+      Ok(output) => self.output = output,
+      Err(err) => error!("{}", err)
+    };
   }
 
   pub fn read_metadata(&self, ino: u64, entry: &OutputEntry) -> anyhow::Result<fuser::FileAttr> {
@@ -128,6 +156,8 @@ impl TransformFs {
 
 impl Filesystem for TransformFs {
   fn lookup(&mut self, _req: &Request, parent: u64, name: &OsStr, reply: fuser::ReplyEntry) {
+    self.update();
+
     let Some(parent_entry) = self.output.inode_map.get(&parent) else {
       reply.error(ENOENT as i32);
       return;
@@ -141,7 +171,7 @@ impl Filesystem for TransformFs {
 
     match self.read_metadata(ino, entry) {
       Ok(attr) => {
-        reply.entry(&self.ttl, &attr, 0);
+        reply.entry(&self.config.timeout, &attr, 0);
       },
       Err(err) => {
         error!("Error reading metadata of file {:?}: {}", entry.path, err);
@@ -151,6 +181,8 @@ impl Filesystem for TransformFs {
   }
 
   fn getattr(&mut self, _req: &Request, ino: u64, reply: fuser::ReplyAttr) {
+    self.update();
+
     let Some(entry) = self.output.inode_map.get(&ino) else {
       reply.error(ENOENT as i32);
       return;
@@ -158,7 +190,7 @@ impl Filesystem for TransformFs {
 
     match self.read_metadata(ino, entry) {
       Ok(attr) => {
-        reply.attr(&self.ttl, &attr);
+        reply.attr(&self.config.timeout, &attr);
       },
       Err(err) => {
         error!("Error reading metadata of file {:?}: {}", entry.path, err);
@@ -234,6 +266,8 @@ impl Filesystem for TransformFs {
     mut reply: fuser::ReplyDirectory,
   ) {
     assert!(offset >= 0);
+
+    self.update();
 
     let Some(entry) = self.output.inode_map.get(&ino) else {
       reply.error(ENOENT as i32);
