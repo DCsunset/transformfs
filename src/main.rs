@@ -15,9 +15,10 @@
 
 mod transformfs;
 mod utils;
+mod output;
 
 use transformfs::TransformFs;
-use std::{fs, path::PathBuf, time::Duration};
+use std::{path::PathBuf, time::Duration};
 use daemonize::Daemonize;
 use clap::Parser;
 use fuser::{self, MountOption};
@@ -25,10 +26,12 @@ use fuser::{self, MountOption};
 #[derive(Parser)]
 #[command(version)]
 struct Args {
-  /// The source directory to read from
-  source_dir: PathBuf,
   /// Mount point of the target transformfs
   mount_point: PathBuf,
+
+  /// The input dirs/files to pass to transform function
+  #[arg(short, long)]
+  input: Vec<PathBuf>,
 
   /// script
   #[arg(short, long)]
@@ -68,11 +71,9 @@ struct Args {
 fn main() -> anyhow::Result<()> {
   env_logger::init();
   let args = Args::parse();
-  // Convert to absolute path
-  let source_dir = fs::canonicalize(&args.source_dir)?;
   let mut options = vec![
     MountOption::RO,
-    MountOption::FSName(source_dir.to_string_lossy().to_string()),
+    MountOption::FSName("transformfs".to_string()),
     MountOption::Subtype("transformfs".to_string()),
   ];
   if args.allow_other {
@@ -97,7 +98,7 @@ fn main() -> anyhow::Result<()> {
   }
 
   fuser::mount2(
-    TransformFs::init(source_dir, args.script, Duration::from_secs(args.ttl))?,
+    TransformFs::init(args.input, args.script, Duration::from_secs(args.ttl))?,
     args.mount_point,
     &options
   )?;

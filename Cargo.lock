@@ -267,6 +267,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "78b3ae25bc7c8c38cec158d1f2757ee79e9b3740fbc7ccf0e59e4b08d793fa89"
 
 [[package]]
+name = "lock_api"
+version = "0.4.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "07af8b9cdd281b7915f413fa73f29ebd5d55d0d3f0155584dade1ff18cea1b17"
+dependencies = [
+ "autocfg",
+ "scopeguard",
+]
+
+[[package]]
 name = "log"
 version = "0.4.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -274,9 +284,9 @@ checksum = "90ed8c1e510134f979dbc4f070f87d4313098b704861a105fe34231c70a3901c"
 
 [[package]]
 name = "lua-src"
-version = "546.0.2"
+version = "547.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2da0daa7eee611a4c30c8f5ee31af55266e26e573971ba9336d2993e2da129b2"
+checksum = "1edaf29e3517b49b8b746701e5648ccb5785cde1c119062cbabbc5d5cd115e42"
 dependencies = [
  "cc",
 ]
@@ -299,22 +309,22 @@ checksum = "6c8640c5d730cb13ebd907d8d04b52f55ac9a2eec55b440c8892f40d56c76c1d"
 
 [[package]]
 name = "mlua"
-version = "0.9.8"
+version = "0.10.0-beta.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e340c022072f3208a4105458286f4985ba5355bfe243c3073afe45cbe9ecf491"
+checksum = "49976b1ca7e2538314441ba370636b8c80891438e3c255636a87594079362c4f"
 dependencies = [
  "bstr",
  "mlua-sys",
  "num-traits",
- "once_cell",
+ "parking_lot",
  "rustc-hash",
 ]
 
 [[package]]
 name = "mlua-sys"
-version = "0.6.0"
+version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5552e7e4e22ada0463dfdeee6caf6dc057a189fdc83136408a8f950a5e5c5540"
+checksum = "3ab7a5b4756b8177a2dfa8e0bbcde63bd4000afbc4ab20cbb68d114a25470f29"
 dependencies = [
  "cc",
  "cfg-if",
@@ -345,12 +355,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "once_cell"
-version = "1.19.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3fdb12b2476b595f9358c5161aa467c2438859caa136dec86c26fdd2efe17b92"
-
-[[package]]
 name = "page_size"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -358,6 +362,29 @@ checksum = "30d5b2194ed13191c1999ae0704b7839fb18384fa22e49b57eeaa97d79ce40da"
 dependencies = [
  "libc",
  "winapi",
+]
+
+[[package]]
+name = "parking_lot"
+version = "0.12.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f1bf18183cf54e8d6059647fc3063646a1801cf30896933ec2311622cc4b9a27"
+dependencies = [
+ "lock_api",
+ "parking_lot_core",
+]
+
+[[package]]
+name = "parking_lot_core"
+version = "0.9.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e401f977ab385c9e4e3ab30627d6f26d00e2c73eef317493c4ec6d468726cf8"
+dependencies = [
+ "cfg-if",
+ "libc",
+ "redox_syscall",
+ "smallvec",
+ "windows-targets",
 ]
 
 [[package]]
@@ -382,6 +409,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fa76aaf39101c457836aec0ce2316dbdc3ab723cdda1c6bd4e6ad4208acaca7"
 dependencies = [
  "proc-macro2",
+]
+
+[[package]]
+name = "redox_syscall"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2a908a6e00f1fdd0dfd9c0eb08ce85126f6d8bbda50017e74bc4a4b7d4a926a4"
+dependencies = [
+ "bitflags",
 ]
 
 [[package]]
@@ -415,9 +451,9 @@ checksum = "7a66a03ae7c801facd77a29370b4faec201768915ac14a721ba36f20bc9c209b"
 
 [[package]]
 name = "rustc-hash"
-version = "1.1.0"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
+checksum = "583034fd73374156e66797ed8e5b0d5690409c9226b22d87cb7f19821c05d152"
 
 [[package]]
 name = "rustix"
@@ -437,6 +473,21 @@ name = "ryu"
 version = "1.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f3cb5ba0dc43242ce17de99c180e96db90b235b8a9fdc9543c96d2209116bd9f"
+
+[[package]]
+name = "same-file"
+version = "1.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "93fc1dc3aaa9bfed95e02e6eadabb4baf7e3078b0bd1b4d7b6b0b68378900502"
+dependencies = [
+ "winapi-util",
+]
+
+[[package]]
+name = "scopeguard"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
 
 [[package]]
 name = "serde"
@@ -505,6 +556,7 @@ dependencies = [
  "mlua",
  "nix",
  "serde_json",
+ "walkdir",
 ]
 
 [[package]]
@@ -518,6 +570,16 @@ name = "utf8parse"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
+
+[[package]]
+name = "walkdir"
+version = "2.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "29790946404f91d9c5d06f9874efddea1dc06c5efe94541a7d6863108e3a5e4b"
+dependencies = [
+ "same-file",
+ "winapi-util",
+]
 
 [[package]]
 name = "which"
@@ -546,6 +608,15 @@ name = "winapi-i686-pc-windows-gnu"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ac3b87c63620426dd9b991e5ce0329eff545bccbbb34f3be09ff6fb6ab51b7b6"
+
+[[package]]
+name = "winapi-util"
+version = "0.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cf221c93e13a30d793f7645a0e7762c55d169dbb0a49671918a2319d289b10bb"
+dependencies = [
+ "windows-sys",
+]
 
 [[package]]
 name = "winapi-x86_64-pc-windows-gnu"

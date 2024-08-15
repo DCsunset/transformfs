@@ -2,16 +2,21 @@ local M = {}
 
 local data = "hello, world"
 
-function M.read_metadata(filename)
-  print("read_metadata", filename)
-  return {
-     size = string.len(data)
-  }
-end
-
-function M.read_data(filename, offset, size)
-  print("read_data", filename, offset, size)
-  return string.sub(data, offset, size)
+function M.transform(inputs)
+  local outputs = {}
+  for i = 1, #input do
+    print(inputs[i])
+    outputs[#outputs+1] = {
+      path = inputs[i] .. ".static",
+      metadata = {
+        size = string.len(data)
+      },
+      read = function(offset, size)
+        return string.sub(data, offset, size)
+      end
+    }
+  end
+  return outputs
 end
 
 return M

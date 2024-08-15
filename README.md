@@ -35,15 +35,19 @@ fusermount -u <mnt_point>
 ```
 
 The Lua script must return a module (table) with the following functions as its fields:
-- `filter_file(parent, filename, file_type)`: (optional) Filter the file. The arguments are the parent dir, original filename and file type.
-  - `file_type` is a string of the [Enum](https://docs.rs/fuser/latest/fuser/enum.FileType.html).
-  - The return value must be a table. It can contain the following optional fields:
-    - `filename`: (string) change to a new filename
-    - `exclude`: (bool) exclude this file
-- `open(filename)`: (optional) Called when opening a file if defined. Useful to open the file in advance for performance
-- `close(filename)`: (optional) Called when closing a file if defined. Useful to reclaim resources
-- `read_metadata(filename)`: Return the metadata of the file as a table. `size` can be set if a user wants to change the size.
-- `read_data(filename, offset, size)`: Return the content of the file as string at a specific position.
+- `transform(input_files)`: Function to transform inputs (a list of strings) to outputs. It should return `Output`.
+
+`Output` is a list of tables with the following fields:
+- `path`: Path of the file
+- `metadata`: Return the metadata of the file as `FileMetadata`.
+- `open()`: (optional) Called when opening a file if defined. Useful to open the file in advance for performance
+- `close()`: (optional) Called when closing a file if defined. Useful to reclaim resources
+- `read(offset, size)`: Return the content of the file as string at a specific position.
+
+`FileMetadata` fields:
+- `size`: Size of the file
+- `block_size`: (optional) Block size of the file. (default: 512)
+
 
 Transformfs uses LuaJIT for performance reason as Lua code is executed very frequently for large files.
 Thus it may not support new features in Lua 5.3 or 5.4 at the time of writing.

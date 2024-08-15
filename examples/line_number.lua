@@ -102,46 +102,43 @@ local function read_from_blocks(file, blocks, offset, size)
   return data
 end
 
-function M.filter_file(_, filename, file_type)
-  if file_type ~= "Directory" then
-    return {
-      exclude = not not string.match(filename, "exclude"),
-      filename = filename .. ".txt"
+function M.transform(inputs)
+  local output = {}
+  for i = 1, #inputs do
+    local name = inputs[i]
+    local state = record_line_offset(name)
+    M.states[name] = state
+
+    output[#output+1] = {
+      path = name .. ".txt",
+      metadata = {
+        size = state.file_size
+      },
+
+      open = function()
+        print("Calling open")
+        if state.file_handles == 0 then
+          state.file = assert(io.open(name, "r"))
+        end
+        state.file_handles = state.file_handles + 1
+      end,
+
+      close = function()
+        print("Calling close")
+        state.file_handles = state.file_handles - 1
+        if state.file_handles == 0 then
+          state.file:close()
+          state.file = nil
+        end
+      end,
+
+      read = function(offset, size)
+        print("Calling read")
+        return read_from_blocks(state.file, state.blocks, offset, size)
+      end
     }
-  else
-    return { filename = filename }
   end
-end
-
-function M.open(filename)
-  local state = M.states[filename]
-  if state.file_handles == 0 then
-    state.file = assert(io.open(filename, "r"))
-  end
-  state.file_handles = state.file_handles + 1
-end
-
-function M.close(filename)
-  local state = M.states[filename]
-  state.file_handles = state.file_handles - 1
-  if state.file_handles == 0 then
-    state.file:close()
-    state.file = nil
-  end
-end
-
-function M.read_metadata(filename)
-  local state = record_line_offset(filename)
-  M.states[filename] = state
-  return {
-    size = state.file_size
-  }
-end
-
-function M.read_data(filename, offset, size)
-  local state = M.states[filename]
-  local data = read_from_blocks(state.file, state.blocks, offset, size)
-  return data
+  return output
 end
 
 return M
