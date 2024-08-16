@@ -40,7 +40,7 @@ The user Lua script must return a module (table) with the following functions as
 - `transform(inputs)`: Function to transform inputs (a list of file paths) to outputs. It should return a list of `Output`.
 
 Each `Output` is table with the following fields:
-- `path`: Path of the file
+- `path`: Path of the file (parent directories are auto created if path contains them)
 - `metadata`: Return the metadata of the file as `FileMetadata`.
 - `open()`: (optional) Called when opening a file if defined. Useful to open the file in advance for performance
 - `close()`: (optional) Called when closing a file if defined. Useful to reclaim resources
