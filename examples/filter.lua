@@ -1,16 +1,26 @@
 local M = {}
 
-local filter_patterns = {
+local include_patterns = {
   "^test/include",
   "^test/hello"
+}
+
+local exclude_patterns = {
+  "exclude"
 }
 
 function M.transform(inputs)
   local outputs = {}
   for _, input in ipairs(inputs) do
     local matched = false
-    -- match any pattern
-    for _, pattern in ipairs(filter_patterns) do
+    -- must not match any exclude pattern
+    for _, pattern in ipairs(exclude_patterns) do
+      if string.find(input, pattern) then
+        goto continue
+      end
+    end
+    -- must match one include pattern
+    for _, pattern in ipairs(include_patterns) do
       if string.find(input, pattern) then
         matched = true
         break
