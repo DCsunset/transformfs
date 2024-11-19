@@ -4,10 +4,9 @@ local filter_pattern = "^test/include"
 
 function M.transform(inputs)
   local outputs = {}
-  for i = 1, #inputs do
-    local path = inputs[i]
-    print(path)
-    if not string.find(path, filter_pattern) then
+  for _, input in ipairs(inputs) do
+    print(input)
+    if not string.find(input, filter_pattern) then
       goto continue
     end
 
@@ -17,14 +16,14 @@ function M.transform(inputs)
     }
 
     outputs[#outputs + 1] = {
-      path = path,
+      path = input,
       metadata = {
-        size = io.open(path):seek("end")
+        size = io.open(input):seek("end")
       },
 
       open = function()
         if state.file_handles == 0 then
-          state.file = assert(io.open(path, "r"))
+          state.file = assert(io.open(input, "r"))
         end
         state.file_handles = state.file_handles + 1
       end,
