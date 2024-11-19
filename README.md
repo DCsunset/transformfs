@@ -55,6 +55,11 @@ Transformfs uses LuaJIT for performance reason as Lua code is executed very freq
 Thus it may not support new features in Lua 5.3 or 5.4 at the time of writing.
 
 See example scripts in `examples` directory for more details and `transformfs --help`.
+The examples in this repo include:
+- `static.lua`: Replace the content of all input files to static content
+- `concat.lua`: Concatenate all inputs to an output file
+- `line_number.lua`: Append a line number to every line in each file
+- `filter.lua`: Filter input files by filenames using a pattern
 
 
 ## License
