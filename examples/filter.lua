@@ -1,12 +1,22 @@
 local M = {}
 
-local filter_pattern = "^test/include"
+local filter_patterns = {
+  "^test/include",
+  "^test/hello"
+}
 
 function M.transform(inputs)
   local outputs = {}
   for _, input in ipairs(inputs) do
-    print(input)
-    if not string.find(input, filter_pattern) then
+    local matched = false
+    -- match any pattern
+    for _, pattern in ipairs(filter_patterns) do
+      if string.find(input, pattern) then
+        matched = true
+        break
+      end
+    end
+    if not matched then
       goto continue
     end
 
